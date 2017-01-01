@@ -1,18 +1,21 @@
+ #include<curses.h>
  #define CharacterNumber 4
  #define ClientNumber 256
 struct message{
     int type;
-    int* content;
-    char* description;
-}
+    int content[35][120];
+    char description[1024];
+};
+
 struct express{
-    int id;
-    char expresschar;
-    //tell is alive. 0 dead,1 alive;
-    int alive;
-}
+    // character list index
+    int index;
+    int valid;
+};
+
 struct clientsocket{
     int socketid;
-
+    int index;
+    char expresschar;
     int valid;
-}
+};

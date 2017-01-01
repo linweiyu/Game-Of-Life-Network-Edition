@@ -10,11 +10,11 @@
 // Server log identifier
 int logid;
 // all used character
-char CanUse[CharacterNumber]=['O','X','*','@'];
+char CanUse[CharacterNumber]={'O','X','*','@'};
 // now character index can use
 int now=0; 
 //all clients socket list 
-struct clientsocket clents[ClientNumber];
+struct clientsocket clients[ClientNumber];
 int nowclientindex=0;
 
 //error control
@@ -35,6 +35,8 @@ void tellCanUseChar(int csock);
 void addnewclient(int csock);
 //one client leave
 void leaveoneclient(int csock);
+//find a client 
+struct clientsocket* findclient(int csock);
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +65,7 @@ int main(int argc, char *argv[])
 		error("ERROR on binding");
 	listen(sockfd,5);
 
-	writetolog("Server begin to listen a port");
+	writetolog("Server begin to listen a port \n");
 	
 	while(1){
 
@@ -92,12 +94,13 @@ void processms(int csock,struct message transfermes){
 	//add new client to array
 	addnewclient(csock);
 	while(1){
+		writetolog(newmessage.description);
 		switch(newmessage.type){
 			case 0:
-				writetolog("Get A request want to playerslist \n");
+				writetolog("get a request from client \n");
 				tellCanUseChar(csock);
 				break;
-			case 9:
+			case 6:
 				writetolog("One Client Leaved \n");
 				close(csock);
 				leaveoneclient(csock);
@@ -126,19 +129,26 @@ void tellCanUseChar(int csock){
 	struct message tellclient;
 	char canuse;
 	canuse=getCanUseChar();
+
+	writetolog(&canuse);
+	writetolog("\n");
+	struct clientsocket* targetclient;
+	targetclient=findclient(csock);
+	targetclient->expresschar=canuse;
 	if(canuse=='~'){
 		tellclient.type=9;
-		tellclient.description="Fail";
+		strcpy(tellclient.description,"Fail");
 	}else{
-		tellclient.type=1
-		strcpy(tellclient.description,canuse);
+		tellclient.type=1;
+		tellclient.description[0]=canuse;
+
 	}
 	write(csock,&tellclient,sizeof(tellclient));
 }
 void addnewclient(int csock){
 	int i;
 	for(i=0;i<ClientNumber;i++){
-		if(clents[i].valid==0){
+		if(clients[i].valid==0){
 			clients[i].socketid=csock;
 			clients[i].valid=1;
 			return;
@@ -150,10 +160,18 @@ void addnewclient(int csock){
 void leaveoneclient(int csock){
 	int i;
 	for(i=0;i<ClientNumber;i++){
-		if(clents[i].socketid==csock){
+		if(clients[i].socketid==csock){
 			clients[i].valid=0;
 			return;
 		}
 	}
 	writetolog("Wrong Client");
+}
+struct clientsocket* findclient(int csock){
+	int i;
+	for(i=0;i<ClientNumber;i++){
+		if(clients[i].socketid==0){
+			return &clients[i];
+		}
+	}
 }

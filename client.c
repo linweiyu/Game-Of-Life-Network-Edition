@@ -13,6 +13,7 @@
 #define PORT 10086
 
 # define ICOLS 30
+# define ILINES LINES
 
 //  socket between server and socket
 int SocketClient;
@@ -29,6 +30,8 @@ static int lifelines = 0;
 static WINDOW *info = NULL;
 /* Game area */
 static WINDOW *life = NULL;
+/* create window */
+WINDOW *createwin(int height, int width, int begy, int begx);
 
 
 void error(const char *msg){
@@ -63,6 +66,7 @@ int connectserver(){
 
 // first time init
 void firstinit(){
+	system("resize -s 35 120");
 	struct message transfermes;
 	int n;
 
@@ -76,13 +80,16 @@ void firstinit(){
 	n = read(SocketClient,&transfermes,sizeof(transfermes));
 	if (n < 0)
 		error("ERROR reading from socket");
-	printf("%s\n",transfermes.description);
+	//printf("%s\n",transfermes.description);
 	
 	if(transfermes.type==9){
 		printf("Server Meet Some Problems. Please try again later ! \n");
 		return;
-	}else{
+	}
+	else{
+		printf("Get Server Character\n");
 		express=transfermes.description[0];
+		printf("%c \n",express);
 		
 		/* Initialize curses */
 		initscr();
@@ -121,15 +128,15 @@ void firstinit(){
 void finsh(){
 	struct message end;
 	int n;
-	end.type=9;
-	strcpy(end.content,"Good Bye!");
+	end.type=6;
+	strcpy(end.description,"Good Bye!");
 	write(SocketClient,&end,sizeof(end));
 	if(n<0){
 		error("ERROR writing to socket");
 	}
 	bzero(&end,sizeof(end));
 	n=read(SocketClient,&end,sizeof(end));
-	if(end.type!=2){
+	if(end.type!=8){
 		error("Something wrong in server");
 	}
 	close(SocketClient);
@@ -161,4 +168,22 @@ int main(int argc, char *argv[]){
 	}
 	
 	return 0;
+}
+
+WINDOW *createwin(int height, int width, int begy, int begx)
+{
+    /* Hold the window */
+    WINDOW *local_win = NULL;
+
+    /* Create the window */
+    local_win = newwin(height, width, begy, begx);
+    if(local_win == NULL) /* Check that it succeeded */
+        exit(EXIT_FAILURE);
+
+    wmove(local_win, 1, 1); /* Looks better if the cursor is not on
+                               top of lines */
+
+    wrefresh(local_win); /* And refresh */
+
+    return local_win;
 }

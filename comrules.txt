@@ -1,8 +1,14 @@
-type    content         from      explain
+type    description     from      explain
 0       "Hello"         client    client first to communicate server.
+
 1       character       server    server tell client which character this client behave.
+7       fail            server    server meet some error. May be the whole character used out.
+
 2       all coordinate  client    client tell server all coordinate
 3       result          server    server tell client new result
 4       stop            server    new client coming. This client should be stoped
 5       start           server    New client begin. The Game Continue.
-6       end             client    One Client Leave.
+6       Good Bye !      client    One Client Leave.
+
+8       Ok              server    Tell Client Server knows
+

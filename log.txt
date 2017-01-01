@@ -1,0 +1,4 @@
+Server begin to listen a port 
+Helloget a request from client 
+O
+Good Bye!One Client Leaved 
