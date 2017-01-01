@@ -9,6 +9,13 @@
 #include "Cell.h"
 // Server log identifier
 int logid;
+// all used character
+char CanUse[CharacterNumber]=['O','X','*','@'];
+// now character index can use
+int now=0; 
+//all clients socket list 
+struct clientsocket clents[ClientNumber];
+int nowclientindex=0;
 
 //error control
 void error(const char *msg)
@@ -20,6 +27,14 @@ void error(const char *msg)
 void processms(int csock,struct message transfermes);
 //write some running info to log.txt
 void writetolog(char* content);
+//return the char can use
+char getCanUseChar();
+//tell client the char can use
+void tellCanUseChar(int csock);
+//new client add 
+void addnewclient(int csock);
+//one client leave
+void leaveoneclient(int csock);
 
 int main(int argc, char *argv[])
 {
@@ -51,6 +66,7 @@ int main(int argc, char *argv[])
 	writetolog("Server begin to listen a port");
 	
 	while(1){
+
 		newsockfd = accept(sockfd,NULL,NULL);
 		if (newsockfd < 0) 
 			error("ERROR on accept");
@@ -58,6 +74,7 @@ int main(int argc, char *argv[])
 		n = read(newsockfd,&transfermes,sizeof(transfermes));
 		if (n < 0) error("ERROR reading from socket");
 		processms(newsockfd,transfermes);
+
 	}
 
 	close(sockfd);
@@ -66,24 +83,24 @@ int main(int argc, char *argv[])
 }
 
 void processms(int csock,struct message transfermes){
-	void getplayers(int csock,struct message transfermes);
-	void OK(int csock);
 	
 	struct message newmessage;
 	newmessage=transfermes;
 	int n;
 	if(fork()!=0)
 		return;
+	//add new client to array
+	addnewclient(csock);
 	while(1){
 		switch(newmessage.type){
 			case 0:
 				writetolog("Get A request want to playerslist \n");
-				getplayers(csock,transfermes);
+				tellCanUseChar(csock);
 				break;
 			case 9:
 				writetolog("One Client Leaved \n");
-				OK(csock);
 				close(csock);
+				leaveoneclient(csock);
 				return;
 			default:
 				break;
@@ -95,26 +112,48 @@ void processms(int csock,struct message transfermes){
 	
 }
 
-//first time communicate
-void getplayers(int csock,struct message transfermes){
-	struct message toclient;
-	char buffer[256];
-	toclient.type=1;
-	int playersfd,bufn;
-	
-	playersfd=open("players",O_RDONLY);
-	while((bufn=read(playersfd,&buffer,256))>0){
-		strncat(toclient.content,buffer,bufn);
-	}
-	write(csock,&toclient,sizeof(toclient));
-	close(playersfd);
-}
-void OK(int csock){
-	struct message toclient;
-	toclient.type=2;
-	strcpy(toclient.content,"OK");
-	write(csock,&toclient,sizeof(toclient));
-}
 void writetolog(char* content){
 	write(logid,content,strlen(content));
+}
+char getCanUseChar(){
+	if(now==CharacterNumber){
+		return '~';
+	}else{
+		return CanUse[now++];
+	}
+}
+void tellCanUseChar(int csock){
+	struct message tellclient;
+	char canuse;
+	canuse=getCanUseChar();
+	if(canuse=='~'){
+		tellclient.type=9;
+		tellclient.description="Fail";
+	}else{
+		tellclient.type=1
+		strcpy(tellclient.description,canuse);
+	}
+	write(csock,&tellclient,sizeof(tellclient));
+}
+void addnewclient(int csock){
+	int i;
+	for(i=0;i<ClientNumber;i++){
+		if(clents[i].valid==0){
+			clients[i].socketid=csock;
+			clients[i].valid=1;
+			return;
+		}
+	}
+	error("It reach the maxmium number of client");
+}
+
+void leaveoneclient(int csock){
+	int i;
+	for(i=0;i<ClientNumber;i++){
+		if(clents[i].socketid==csock){
+			clients[i].valid=0;
+			return;
+		}
+	}
+	writetolog("Wrong Client");
 }

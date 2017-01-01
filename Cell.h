@@ -1,3 +1,5 @@
+ #define CharacterNumber 4
+ #define ClientNumber 256
 struct message{
     int type;
     int* content;
@@ -8,4 +10,9 @@ struct express{
     char expresschar;
     //tell is alive. 0 dead,1 alive;
     int alive;
+}
+struct clientsocket{
+    int socketid;
+
+    int valid;
 }

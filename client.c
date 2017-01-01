@@ -12,11 +12,24 @@
 #define IPADDR "127.0.0.1"
 #define PORT 10086
 
+# define ICOLS 30
 
 //  socket between server and socket
 int SocketClient;
 //	global variable
 struct message global_ms;
+//	character express
+char express;
+
+//curses 
+/* Size of the 'game area' */
+static int lifecols = 0;
+static int lifelines = 0;
+/* Information window */
+static WINDOW *info = NULL;
+/* Game area */
+static WINDOW *life = NULL;
+
 
 void error(const char *msg){
 	perror(msg);
@@ -64,12 +77,45 @@ void firstinit(){
 	if (n < 0)
 		error("ERROR reading from socket");
 	printf("%s\n",transfermes.description);
-	//close(sockfd);
-	//resolve
 	
-	//draw 
-	initscr();
-	noecho();
+	if(transfermes.type==9){
+		printf("Server Meet Some Problems. Please try again later ! \n");
+		return;
+	}else{
+		express=transfermes.description[0];
+		
+		/* Initialize curses */
+		initscr();
+		/* Don't echo keys */
+		noecho();
+		raw();
+		/* Allow arrows and other weird keys */
+		keypad(stdscr, true);
+		/* Refresh the standard screen */
+		refresh();
+
+		lifecols = COLS-ICOLS-1; /* Leave one column empty */
+		lifelines = LINES; /* Full height */
+
+		/* Create the two windows */
+		life = createwin(lifelines, lifecols, 0, 0);
+		info = createwin(ILINES, ICOLS, 0, lifecols+1);
+
+		/* Make a default box around the info-window */
+		box(info, 0, 0);
+		/* Move, window, printw; Write to window info and move the cursor to 1,1
+		* before writing. */
+		mvwprintw(info, 1,1, "INFO");
+
+		/* Move the cursor back to game area. The user don't need to see the cursor
+		* jumping to the info-window */
+		wmove(life, 1,1);
+
+		/* Refresh both of the windows */
+		wrefresh(info);
+		wrefresh(life);
+
+	}
 }
 // game end
 void finsh(){
@@ -91,8 +137,11 @@ void finsh(){
 	addstr("Good Bye");
 	refresh();
 	sleep(2);
-	// echo();
-	endwin();
+	/* Delete the two windows we made */
+    delwin(info);
+    delwin(life);
+    /* And end curses mode. It's bad if this is forgotten. Vey very bad */
+    endwin();
 }
 
 
