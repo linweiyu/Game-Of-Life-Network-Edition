@@ -11,4 +11,4 @@ type    description     from      explain
 6       Good Bye !      client    One Client Leave.
 
 8       Ok              server    Tell Client Server knows
-
+9       Continue        client    client tell server to continue compute

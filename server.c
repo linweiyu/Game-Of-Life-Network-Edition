@@ -6,17 +6,19 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <time.h>
 #include "Cell.h"
 // Server log identifier
 int logid;
 // all used character
-char CanUse[CharacterNumber]={'O','X','*','@'};
+char CanUse[CharacterNumber]={'O','X','*','Z'};
 // now character index can use
-int now=0; 
+int now=0;
 //all clients socket list 
 struct clientsocket clients[ClientNumber];
 int nowclientindex=0;
-
+//real matrix
+int realmatrix[35][90];
 //error control
 void error(const char *msg)
 {
@@ -37,6 +39,10 @@ void addnewclient(int csock);
 void leaveoneclient(int csock);
 //find a client 
 struct clientsocket* findclient(int csock);
+//say ok to clients
+void SayOK(int csock);
+//deal content from client
+void deal(int (*matrix)[90]);
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +91,7 @@ int main(int argc, char *argv[])
 }
 
 void processms(int csock,struct message transfermes){
-	
+	void sendtoclient(int csock);
 	struct message newmessage;
 	newmessage=transfermes;
 	int n;
@@ -102,9 +108,17 @@ void processms(int csock,struct message transfermes){
 				break;
 			case 6:
 				writetolog("One Client Leaved \n");
+				SayOK(csock);
 				close(csock);
 				leaveoneclient(csock);
 				return;
+			case 2:
+				deal(newmessage.content);
+				sendtoclient(csock);
+				break;
+			case 9:
+				sendtoclient(csock);
+				break;
 			default:
 				break;
 		}
@@ -174,4 +188,131 @@ struct clientsocket* findclient(int csock){
 			return &clients[i];
 		}
 	}
+}
+void SayOK(int csock){
+	struct message sendclient;
+	sendclient.type=8;
+	strcpy(sendclient.description,"OK!");
+	write(csock,&sendclient,sizeof(sendclient));
+}
+void deal(int (*matrix)[90]){
+	int i,j;
+	for(i=0;i<35;i++){
+		for(j=0;j<90;j++){
+			if(matrix[i][j]==1){
+				realmatrix[i][j]=1;
+			}
+		}
+	}
+
+}
+void sendtoclient(int csock){
+	void tick();
+	struct message transres;
+	transres.type=3;
+	tick();
+	int i,j;
+	for(i=0;i<35;i++){
+		for(j=0;j<90;j++){
+			transres.content[i][j]=realmatrix[i][j];
+		}
+	}
+	write(csock,&transres,sizeof(transres));
+
+}
+
+void tick()
+{
+	int neighbours(int y, int x);
+    /* t = current tick iteration
+     * x = x coordinate
+     * y = y coordinate
+     * n = neighbours for a coordinate
+     */
+    int t, x, y, n;
+    /* Sync the buffer with the game area
+     * buffer <- cells.
+     * The buffer and cells are separated so that the calculations from this
+     * round won't affect this round. For example let's imagine that coordinate
+     * (y,x) (1,1) is active but is deemed dead after visiting it. Then we
+     * check the coordinate (y,x) (2,1) which now has only 1 neighbour and also
+     * dies. By separating the cells and buffer we keep the cells untouchable
+     * during the round, but after we have finished the round, we can sync
+     * them. */
+	int ticksize=1;
+    for(t = 0; t < ticksize; t++)
+    { /* Iterations */
+        for(x = 0; x < 90; x++)
+        {
+            for(y = 0; y < 35; y++)
+            {
+                /* Get the neighbours for the coordinate */
+                n = neighbours(y, x);
+                /* If a cell has less than two neighbours it dies, no matter
+                 * what. If a cell has more than three neighbours it's
+                 * overcrowded and dies too. */
+                if(n < 2 || n > 3)
+                {
+					realmatrix[y][x]=0;
+                }
+                /* If a cell has 3 neighbours it revives */
+                if(n == 3)
+                {
+                    realmatrix[y][x]=1;
+
+                }
+                /* The only possibility left is that the cell has two
+                 * neighbours, which means that the cell stays alive if it's
+                 * alive, if it's dead it stays dead. */
+            }
+        }
+    }
+}
+
+int neighbours(int y, int x)
+{
+	int ALIVE(int y,int x);
+    int n = 0; /* Alive neighbours */
+
+    /* The curses coordinate system puts y=0 to the top, so y-1 means checking
+     * for above and y+1 means the bottom */
+
+    /* Check for boundaries and then sum up the alive cells */
+    if(y < 35)
+    {
+        n += ALIVE(y+1,x); /* Bottom */
+    }
+    if(y > 0)
+    {
+        n += ALIVE(y-1,x); /* Top */
+    }
+    if(x < 90)
+    {
+        n += ALIVE(y, x+1); /* Right */
+        if(y > 0)
+        {
+            n += ALIVE(y-1, x+1); /* Top right */
+        }
+        if(y < 35)
+        {
+            n += ALIVE(y+1, x+1); /* Bottom right */
+        }
+    }
+    if(x > 0)
+    {
+        n += ALIVE(y, x-1); /* Left */
+        if(y > 0)
+        {
+            n += ALIVE(y-1, x-1); /* Top left */
+        }
+        if(y < 35)
+        {
+            n += ALIVE(y+1, x-1); /* Bottom left */
+        }
+    }
+
+    return n;
+}
+int ALIVE(int y,int x){
+	return realmatrix[y][x]==1?1:0;
 }

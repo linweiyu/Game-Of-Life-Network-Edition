@@ -3,7 +3,7 @@
  #define ClientNumber 256
 struct message{
     int type;
-    int content[35][120];
+    int content[35][90];
     char description[1024];
 };
 

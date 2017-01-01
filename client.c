@@ -11,7 +11,7 @@
 #include "Cell.h"
 #define IPADDR "127.0.0.1"
 #define PORT 10086
-
+//info width
 # define ICOLS 30
 # define ILINES LINES
 
@@ -21,7 +21,10 @@ int SocketClient;
 struct message global_ms;
 //	character express
 char express;
-
+//activate coordinate
+void activate(int y, int x);
+//send coordinate to server
+void sendclientinfo();
 //curses 
 /* Size of the 'game area' */
 static int lifecols = 0;
@@ -33,6 +36,13 @@ static WINDOW *life = NULL;
 /* create window */
 WINDOW *createwin(int height, int width, int begy, int begx);
 
+
+
+# define CPR(y, x) (global_ms.content[y][x] = 1) /* Give CPR to the defined
+                                                  coordinate. (Make it alive)
+                                                  */
+# define LMAX (lifelines-1) /* Maximum lines */
+# define CMAX (lifecols-1) /* Maximum columns */
 
 void error(const char *msg){
 	perror(msg);
@@ -66,7 +76,7 @@ int connectserver(){
 
 // first time init
 void firstinit(){
-	system("resize -s 35 120");
+	system("resize -s 35 121");
 	struct message transfermes;
 	int n;
 
@@ -87,6 +97,7 @@ void firstinit(){
 		return;
 	}
 	else{
+		bzero(&global_ms,sizeof(global_ms));
 		printf("Get Server Character\n");
 		express=transfermes.description[0];
 		printf("%c \n",express);
@@ -140,8 +151,6 @@ void finsh(){
 		error("Something wrong in server");
 	}
 	close(SocketClient);
-	move(50,50);
-	addstr("Good Bye");
 	refresh();
 	sleep(2);
 	/* Delete the two windows we made */
@@ -149,11 +158,15 @@ void finsh(){
     delwin(life);
     /* And end curses mode. It's bad if this is forgotten. Vey very bad */
     endwin();
+	exit(0);
 }
 
 
 int main(int argc, char *argv[]){
+	void watch();
 	firstinit();
+	int x,y; /* Holds the coordinates */
+    getyx(life, y, x); /* Get the coordinates from curses life window */
 	char command;
 	while(1){
 
@@ -162,13 +175,68 @@ int main(int argc, char *argv[]){
 			case 'q':
 				finsh();
 				break;
-
+			case 'l': /* Go right */
+				x=(x+1)%CMAX;
+				break;
+			case 'h': /* Go left */
+				x=(x-1)%CMAX;
+				break;
+			case 'j': /* Go down */
+				y=(y+1)%LMAX;
+				break;
+			case 'k': /* Go up */
+				y=(y-1)%LMAX;
+				break;
+			case ' ': /* Activate a cell */
+				activate(y, x);
+				break;
+			case 10:
+				sendclientinfo();
+				watch();
+				break;
 		}
+		wmove(life, y, x); /* Move the coordinates to the new location and refresh
+                          the game area */
+    	wrefresh(life);
 
 	}
 	
 	return 0;
 }
+
+void watch(){
+	void refreshnewresult(int (* matrix)[90]);
+	int n;
+	char command;
+	struct message transfer;
+	while(1){
+		
+		n=read(SocketClient,&transfer,sizeof(transfer));
+		if(n>0&&transfer.type==3)
+			refreshnewresult(transfer.content);
+		bzero(&transfer,sizeof(transfer));
+		transfer.type=9;
+		strcpy(transfer.description,"Continue");
+		write(SocketClient,&transfer,sizeof(transfer));
+
+	}
+
+}
+void refreshnewresult(int (* matrix)[90]){
+	int i,j;
+	for(i=0;i<35;i++){
+		for(j=0;j<90;j++){
+			if(matrix[i][j]==1){
+				mvwaddch(life, j, i, express);
+			}else{
+				mvwaddch(life, j, i, " ");
+			}
+		}
+	}
+
+}
+
+
 
 WINDOW *createwin(int height, int width, int begy, int begx)
 {
@@ -186,4 +254,17 @@ WINDOW *createwin(int height, int width, int begy, int begx)
     wrefresh(local_win); /* And refresh */
 
     return local_win;
+}
+void activate(int y, int x)
+{
+    /* Set the cell alive in the array */
+    CPR(y,x);
+    /* And show it visually too */
+    mvwaddch(life, y, x, express);
+}
+void sendclientinfo(){
+	global_ms.type=2;
+	strcpy(global_ms.description,"All Coordinate Send to Server");
+	write(SocketClient,&global_ms,sizeof(global_ms));
+	bzero(&global_ms,sizeof(global_ms));
 }
